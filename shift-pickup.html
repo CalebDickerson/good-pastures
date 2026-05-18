@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shift Pickup</title>
+<style>
+  /* Keeping the same mobile-first base */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f5f7;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+    min-height: 100vh;
+  }
+
+  .app-container {
+    width: 100%;
+    max-width: 400px;
+  }
+
+  /* Header styles */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .back-btn {
+    text-decoration: none;
+    color: #4b5563;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  h2 {
+    margin: 0;
+    color: #1a1b1e;
+    font-size: 20px;
+  }
+
+  /* Section Titles */
+  h3 {
+    font-size: 14px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    margin-top: 24px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 8px;
+  }
+
+  /* Shift Card Styles */
+  .shift-card {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    margin-bottom: 12px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+  }
+
+  .shift-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .shift-date {
+    font-weight: 600;
+    color: #1a1b1e;
+    font-size: 16px;
+  }
+
+  .original-worker {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+
+  .claim-btn {
+    background-color: #1a1b1e;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* The italicized text for claimed shifts */
+  .claimed-by-text {
+    font-size: 13px;
+    font-style: italic;
+    color: #059669; /* A subtle green to indicate success */
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px dashed #e5e7eb;
+  }
+
+  /* --- Popup (Modal) Styles --- */
+  .modal-overlay {
+    display: none; /* Hidden by default */
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal-card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 320px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  }
+
+  .modal-card h4 { margin-top: 0; margin-bottom: 16px; font-size: 18px; }
+  
+  .form-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+    margin-bottom: 16px;
+  }
+
+  .modal-buttons {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn-modal {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn-submit { background-color: #1a1b1e; color: white; }
+  .btn-cancel { background-color: #e5e7eb; color: #4b5563; }
+
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <div class="header">
+    <a href="index.html" class="back-btn">← Back</a>
+    <h2>Shift Board</h2>
+    <div style="width: 45px;"></div> </div>
+
+<h3>Unclaimed Shifts</h3>
+      <div id="unclaimed-container"></div>
+      
+      <h3>Claimed Shifts</h3>
+      <div id="claimed-container"></div>
+</div>
+
+<div class="modal-overlay" id="claimModal">
+  <div class="modal-card">
+    <h4>Claim this shift?</h4>
+    <input type="text" id="blitzName" class="form-input" placeholder="Type your name...">
+    <div class="modal-buttons">
+      <button class="btn-modal btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-modal btn-submit" onclick="submitClaim()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentShiftId = null;
+  
+  // 1. PASTE YOUR UNIQUE GOOGLE WEB APP URL HERE:
+  const googleScriptURL = "https://script.google.com/macros/s/AKfycbz0Nt27SAcF8Gpz8mThNfpKA455p9uJWjo-zZcL-cv3c0djx6ABXmIbL1DZ3WpiNPWEWg/exec";
+
+  // 2. Fetch data from Google Sheets and build the board dynamically
+  function loadShiftBoard() {
+    fetch(googleScriptURL)
+      .then(response => response.json())
+      .then(shifts => {
+        // Sort shifts chronologically by start date before building the cards
+shifts.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+        const unclaimedContainer = document.getElementById('unclaimed-container');
+        const claimedContainer = document.getElementById('claimed-container');
+        
+        unclaimedContainer.innerHTML = '';
+        claimedContainer.innerHTML = '';
+        
+        shifts.forEach(shift => {
+// Clean the timestamps and rearrange YYYY-MM-DD to MM/DD/YYYY
+        function formatToUS(dateStr) {
+          if (!dateStr) return "";
+          let ISOdate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+          let parts = ISOdate.split('-'); 
+          return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0]}` : ISOdate;
+        }
+
+        let cleanStart = formatToUS(shift.startDate);
+        let cleanEnd = formatToUS(shift.endDate);
+
+          let dateText = cleanStart;
+          if (cleanEnd) {
+            dateText = dateText + " - " + cleanEnd;
+          }
+          
+          if (shift.status === "Unclaimed") {
+            unclaimedContainer.innerHTML += `
+              <div class="shift-card" id="row-${shift.rowId}">
+                <div class="shift-details">
+                  <div>
+                    <div class="shift-date">${dateText}</div>
+                    <div class="original-worker">Covering for: ${shift.empName}</div>
+                  </div>
+                  <button class="claim-btn" onclick="openModal('row-${shift.rowId}')">Claim</button>
+                </div>
+              </div>
+            `;
+          } else {
+            // Build a Claimed Card showing who picked it up permanently
+            claimedContainer.innerHTML += `
+              <div class="shift-card" id="row-${shift.rowId}">
+                <div class="shift-details">
+                  <div>
+                    <div class="shift-date">${dateText}</div>
+                    <div class="original-worker">Covering for: ${shift.empName}</div>
+                  </div>
+                </div>
+                <div class="claimed-by-text" style="font-style: italic; color: #666; margin-top: 8px;">
+                  Picked up by: ${shift.claimedBy}
+                </div>
+              </div>
+            `;
+          }
+        });
+      })
+      .catch(error => console.error("Error loading shifts:", error));
+  }
+
+  window.addEventListener('DOMContentLoaded', loadShiftBoard);
+
+  function openModal(shiftId) {
+    currentShiftId = shiftId;
+    document.getElementById('claimModal').style.display = 'flex';
+    document.getElementById('blitzName').focus(); 
+  }
+
+  function closeModal() {
+    document.getElementById('claimModal').style.display = 'none';
+    document.getElementById('blitzName').value = ''; 
+    currentShiftId = null;
+  }
+
+  // 3. DATABASE FIX: Send the claim data permanently to Google Sheets
+  function submitClaim() {
+    const name = document.getElementById('blitzName').value;
+    if (name.trim() === "") {
+      alert("Please enter your name!");
+      return;
+    }
+
+    // Extract the exact spreadsheet row number from the ID (e.g., "row-5" -> "5")
+    const rowIdNum = currentShiftId.replace('row-', '');
+
+    // Format data payload for Google Sheets
+    const formData = new URLSearchParams();
+    formData.append('rowId', rowIdNum);
+    formData.append('claimedBy', name);
+
+    // Send update request to database
+// Send update request to database
+    fetch(googleScriptURL, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.text())
+    .then(result => {
+      if (result === "Success") {
+        alert("Shift successfully claimed!");
+        closeModal();
+        loadShiftBoard();
+      } else {
+        alert("Something went wrong saving to the database.");
+      }
+    })
+    .catch(error => {
+      console.error("Error claiming shift:", error);
+      alert("Error connecting to Google Sheets.");
+    });
+  }
+</script>
+
+</body>
+</html>
