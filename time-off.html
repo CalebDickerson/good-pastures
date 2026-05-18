@@ -89,11 +89,21 @@
     background-color: #2c2e33;
   }
 
-  .btn-secondary {
-    background-color: transparent;
-    color: #1a1b1e;
-    border: 1px solid #d1d5db;
-    margin-top: 16px;
+.btn-secondary {
+      background-color: transparent;
+      color: #1a1b1e;
+      border: 1px solid #d1d5db;
+      margin-top: 16px;
+  }
+
+  /* FORCE ALL INPUTS AND BUTTONS TO MATCH EXACTLY */
+  input[type="text"],
+  input[type="date"],
+  .form-input,
+  .btn {
+      width: 100% !important;
+      box-sizing: border-box !important;
+      -webkit-appearance: none; /* Disables weird iOS default rendering */
   }
 
 </style>
