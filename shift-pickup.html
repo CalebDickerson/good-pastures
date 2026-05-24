@@ -155,6 +155,43 @@
   .btn-submit { background-color: #1a1b1e; color: white; }
   .btn-cancel { background-color: #e5e7eb; color: #4b5563; }
 
+  /* =========================================
+     DROPDOWN (ACCORDION) STYLING 
+     ========================================= */
+  details.board-section {
+      margin-bottom: 24px; /* Gives breathing room between sections */
+  }
+  
+  details > summary {
+      list-style: none; /* Hides standard browser arrows */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e5e7eb;
+      margin-bottom: 16px;
+  }
+  
+  details > summary::-webkit-details-marker {
+      display: none; /* Force hides the arrow specifically on iOS Safari */
+  }
+  
+  details > summary h3 {
+      margin: 0; /* Keeps the text perfectly aligned with the arrow */
+  }
+  
+  .dropdown-arrow {
+      font-size: 14px;
+      color: #6b7280;
+      transition: transform 0.2s ease-in-out; /* Smooth flipping animation */
+  }
+  
+  /* When the section is clicked open, flip the arrow upside down! */
+  details[open] > summary .dropdown-arrow {
+      transform: rotate(180deg);
+  }
+
 </style>
 </head>
 <body>
@@ -166,26 +203,37 @@
     <h2>Shift Board</h2>
     <div style="width: 45px;"></div> </div>
 
-<div class="board-section">
-  <h3>Unclaimed Crew Shifts</h3>
+<details class="board-section" open>
+  <summary>
+    <h3>Unclaimed Crew Shifts</h3>
+    <span class="dropdown-arrow">▼</span>
+  </summary>
   <div id="unclaimed-crew-container"></div>
-</div>
+</details>
 
-<div class="board-section">
-  <h3>Claimed Crew Shifts</h3>
+<details class="board-section">
+  <summary>
+    <h3>Claimed Crew Shifts</h3>
+    <span class="dropdown-arrow">▼</span>
+  </summary>
   <div id="claimed-crew-container"></div>
-</div>
+</details>
 
-<div class="board-section">
-  <h3>Unclaimed Blitz Shifts</h3>
+<details class="board-section" open>
+  <summary>
+    <h3>Unclaimed Blitz Shifts</h3>
+    <span class="dropdown-arrow">▼</span>
+  </summary>
   <div id="unclaimed-blitz-container"></div>
-</div>
+</details>
 
-<div class="board-section">
-  <h3>Claimed Blitz Shifts</h3>
+<details class="board-section">
+  <summary>
+    <h3>Claimed Blitz Shifts</h3>
+    <span class="dropdown-arrow">▼</span>
+  </summary>
   <div id="claimed-blitz-container"></div>
-</div>
-</div>
+</details>
 
 <div class="modal-overlay" id="claimModal">
   <div class="modal-card">
