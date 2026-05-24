@@ -224,21 +224,27 @@
         // Clean the DB date to match our target string
         let shiftDateClean = shift.startDate.includes('T') ? shift.startDate.split('T')[0] : shift.startDate;
         
-        if (shiftDateClean === targetDateStr) {
-          let isBlitz = shift.empName && shift.empName.includes('Blitz');
-          
-          if (!isBlitz) {
-            // A regular crew member is taking this day off
-            workingToday = workingToday.filter(name => name !== shift.empName);
-            offWorkers.push(shift.empName);
-          }
-          
-          if (shift.status === "Claimed" && shift.claimedBy) {
-            // Someone picked up a shift! Add them to the blitz list
-            blitzWorkers.push(shift.claimedBy);
-          }
+if (shiftDateClean === targetDateStr) {
+      let isBlitz = shift.empName && shift.empName.includes('Blitz');
+      
+      if (!isBlitz) {
+        // A regular crew member is taking this day off
+        workingToday = workingToday.filter(name => name !== shift.empName);
+        // THE FIX: Only add them if they aren't already on the list
+        if (!offWorkers.includes(shift.empName)) {
+          offWorkers.push(shift.empName);
         }
-      });
+      }
+      
+      if (shift.status === "Claimed" && shift.claimedBy) {
+        // Someone picked up a shift! 
+        // THE FIX: Only add them if they aren't already on the list
+        if (!blitzWorkers.includes(shift.claimedBy)) {
+          blitzWorkers.push(shift.claimedBy);
+        }
+      }
+    }
+  });
 
       // 3. Display the results on the UI
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
