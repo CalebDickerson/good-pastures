@@ -166,11 +166,25 @@
     <h2>Shift Board</h2>
     <div style="width: 45px;"></div> </div>
 
-<h3>Unclaimed Shifts</h3>
-      <div id="unclaimed-container"></div>
-      
-      <h3>Claimed Shifts</h3>
-      <div id="claimed-container"></div>
+<div class="board-section">
+  <h3>Unclaimed Crew Shifts</h3>
+  <div id="unclaimed-crew-container"></div>
+</div>
+
+<div class="board-section">
+  <h3>Claimed Crew Shifts</h3>
+  <div id="claimed-crew-container"></div>
+</div>
+
+<div class="board-section">
+  <h3>Unclaimed Blitz Shifts</h3>
+  <div id="unclaimed-blitz-container"></div>
+</div>
+
+<div class="board-section">
+  <h3>Claimed Blitz Shifts</h3>
+  <div id="claimed-blitz-container"></div>
+</div>
 </div>
 
 <div class="modal-overlay" id="claimModal">
@@ -185,126 +199,131 @@
 </div>
 
 <script>
-  let currentShiftId = null;
-  
-  // 1. PASTE YOUR UNIQUE GOOGLE WEB APP URL HERE:
-  const googleScriptURL = "https://script.google.com/macros/s/AKfycbz0Nt27SAcF8Gpz8mThNfpKA455p9uJWjo-zZcL-cv3c0djx6ABXmIbL1DZ3WpiNPWEWg/exec";
+    let currentShiftId = null;
 
-  // 2. Fetch data from Google Sheets and build the board dynamically
-  function loadShiftBoard() {
-    fetch(googleScriptURL)
-      .then(response => response.json())
-      .then(shifts => {
-        // Sort shifts chronologically by start date before building the cards
-shifts.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-        const unclaimedContainer = document.getElementById('unclaimed-container');
-        const claimedContainer = document.getElementById('claimed-container');
-        
-        unclaimedContainer.innerHTML = '';
-        claimedContainer.innerHTML = '';
-        
-        shifts.forEach(shift => {
-// Clean the timestamps and rearrange YYYY-MM-DD to MM/DD/YYYY
-        function formatToUS(dateStr) {
-          if (!dateStr) return "";
-          let ISOdate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
-          let parts = ISOdate.split('-'); 
-          return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0]}` : ISOdate;
-        }
+    // 1. PASTE YOUR UNIQUE GOOGLE WEB APP URL RIGHT HERE (Keep the quote marks!):
+    const googleScriptURL = "https://script.google.com/macros/s/AKfycbz0Nt27SAcF8Gpz8mThNfpKA455p9uJWjo-zZcL-cv3c0djx6ABXmIbL1DZ3WpiNPWEWg/exec";
 
-        let cleanStart = formatToUS(shift.startDate);
-        let cleanEnd = formatToUS(shift.endDate);
+    // 2. Fetch data and build the 4-section board dynamically
+    function loadShiftBoard() {
+      fetch(googleScriptURL)
+        .then(response => response.json())
+        .then(shifts => {
+          // Sort shifts chronologically by start date
+          shifts.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
-          let dateText = cleanStart;
-          if (cleanEnd) {
-            dateText = dateText + " - " + cleanEnd;
-          }
-          
-          if (shift.status === "Unclaimed") {
-            unclaimedContainer.innerHTML += `
-              <div class="shift-card" id="row-${shift.rowId}">
-                <div class="shift-details">
-                  <div>
+          // Grab the 4 new UI buckets
+          const unclaimedCrew = document.getElementById('unclaimed-crew-container');
+          const claimedCrew = document.getElementById('claimed-crew-container');
+          const unclaimedBlitz = document.getElementById('unclaimed-blitz-container');
+          const claimedBlitz = document.getElementById('claimed-blitz-container');
+
+          // Clear them out before loading fresh data
+          unclaimedCrew.innerHTML = '';
+          claimedCrew.innerHTML = '';
+          unclaimedBlitz.innerHTML = '';
+          claimedBlitz.innerHTML = '';
+
+          shifts.forEach(shift => {
+            // Clean the timestamps to MM/DD/YYYY
+            function formatToUS(dateStr) {
+              if (!dateStr) return "";
+              let ISOdate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+              let parts = ISOdate.split('-'); 
+              return parts.length === 3 ? `${parts[1]}/${parts[2]}/${parts[0]}` : ISOdate;
+            }
+            
+            let dateText = formatToUS(shift.startDate);
+
+            // LOGIC: Is this a Blitz shift or a Crew shift?
+            // (Our backend script labeled them with "Blitz" in the name)
+            let isBlitz = shift.empName && shift.empName.includes('Blitz');
+            
+            // Format how the name looks on the card
+            let workerText = isBlitz ? shift.empName : `Covering for: ${shift.empName}`;
+
+            if (shift.status === "Unclaimed") {
+              let cardHTML = `
+                <div class="shift-card" id="row-${shift.rowId}">
+                  <div class="shift-details">
                     <div class="shift-date">${dateText}</div>
-                    <div class="original-worker">Covering for: ${shift.empName}</div>
+                    <div class="original-worker">${workerText}</div>
                   </div>
-                  <button class="claim-btn" onclick="openModal('row-${shift.rowId}')">Claim</button>
+                  <button class="claim-btn" onclick="openModal('${shift.rowId}')">Claim</button>
                 </div>
-              </div>
-            `;
-          } else {
-            // Build a Claimed Card showing who picked it up permanently
-            claimedContainer.innerHTML += `
-              <div class="shift-card" id="row-${shift.rowId}">
-                <div class="shift-details">
-                  <div>
+              `;
+              
+              // Sort into the correct unclaimed bucket
+              if (isBlitz) unclaimedBlitz.innerHTML += cardHTML;
+              else unclaimedCrew.innerHTML += cardHTML;
+              
+            } else {
+              // This shift IS claimed! 
+              let cardHTML = `
+                <div class="shift-card" style="border-left-color: #10b981;" id="row-${shift.rowId}">
+                  <div class="shift-details">
                     <div class="shift-date">${dateText}</div>
-                    <div class="original-worker">Covering for: ${shift.empName}</div>
+                    <div class="original-worker">${workerText}</div>
+                    <div class="original-worker" style="color: #2c2e33; font-weight: bold; margin-top: 4px;">Claimed by: ${shift.claimedBy}</div>
                   </div>
+                  <button class="claim-btn" style="background-color: #dc2626; color: white;" onclick="releaseShift('${shift.rowId}')">Release</button>
                 </div>
-                <div class="claimed-by-text" style="font-style: italic; color: #666; margin-top: 8px;">
-                  Picked up by: ${shift.claimedBy}
-                </div>
-              </div>
-            `;
-          }
+              `;
+              
+              // Sort into the correct claimed bucket
+              if (isBlitz) claimedBlitz.innerHTML += cardHTML;
+              else claimedCrew.innerHTML += cardHTML;
+            }
+          });
         });
-      })
-      .catch(error => console.error("Error loading shifts:", error));
-  }
-
-  window.addEventListener('DOMContentLoaded', loadShiftBoard);
-
-  function openModal(shiftId) {
-    currentShiftId = shiftId;
-    document.getElementById('claimModal').style.display = 'flex';
-    document.getElementById('blitzName').focus(); 
-  }
-
-  function closeModal() {
-    document.getElementById('claimModal').style.display = 'none';
-    document.getElementById('blitzName').value = ''; 
-    currentShiftId = null;
-  }
-
-  // 3. DATABASE FIX: Send the claim data permanently to Google Sheets
-  function submitClaim() {
-    const name = document.getElementById('blitzName').value;
-    if (name.trim() === "") {
-      alert("Please enter your name!");
-      return;
     }
 
-    // Extract the exact spreadsheet row number from the ID (e.g., "row-5" -> "5")
-    const rowIdNum = currentShiftId.replace('row-', '');
+    // 3. Claim Modal Functions
+    function openModal(rowId) {
+      currentShiftId = rowId;
+      document.getElementById('claimModal').style.display = 'flex';
+    }
 
-    // Format data payload for Google Sheets
-    const formData = new URLSearchParams();
-    formData.append('rowId', rowIdNum);
-    formData.append('claimedBy', name);
+    function closeModal() {
+      currentShiftId = null;
+      document.getElementById('blitzName').value = '';
+      document.getElementById('claimModal').style.display = 'none';
+    }
 
-    // Send update request to database
-// Send update request to database
-    fetch(googleScriptURL, {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => response.text())
-    .then(result => {
-      if (result === "Success") {
-        alert("Shift successfully claimed!");
+    function submitClaim() {
+      const name = document.getElementById('blitzName').value;
+      if (!name) { alert("Please enter your name!"); return; }
+
+      fetch(googleScriptURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `rowId=${currentShiftId}&claimedBy=${encodeURIComponent(name)}`
+      })
+      .then(response => response.text())
+      .then(data => {
         closeModal();
-        loadShiftBoard();
-      } else {
-        alert("Something went wrong saving to the database.");
+        loadShiftBoard(); // Reload board instantly
+      });
+    }
+
+    // 4. NEW FUNCTION: Release a claimed shift
+    function releaseShift(rowId) {
+      if (confirm("Are you sure you want to release this shift back to the board?")) {
+        fetch(googleScriptURL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `rowId=${rowId}&action=release`
+        })
+        .then(response => response.text())
+        .then(data => {
+          loadShiftBoard(); // Reload board instantly
+        });
       }
-    })
-    .catch(error => {
-      console.error("Error claiming shift:", error);
-      alert("Error connecting to Google Sheets.");
-    });
-  }
-</script>
+    }
+
+    // Load everything when the page opens
+    window.onload = loadShiftBoard;
+  </script>
 
 </body>
 </html>
